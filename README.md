@@ -31,7 +31,7 @@ cc.save("./cc_100k")
 ```
 
 Load classifier and run inference:
-```
+```python
 from src.text_cluster import ClusterClassifier
 
 cc = ClusterClassifier(embed_device="mps")
