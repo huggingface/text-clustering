@@ -198,7 +198,10 @@ class ClusterClassifier:
 
         with open(f'{folder}/texts.json', 'w') as f:
             json.dump(self.texts, f)
-        
+
+        with open(f"{folder}/mistral_prompt.txt", "w") as f:
+            f.write(DEFAULT_INSTRUCTION)
+    
         if self.cluster_summaries is not None:
             with open(f'{folder}/cluster_summaries.json', 'w') as f:
                 json.dump(self.cluster_summaries, f)
