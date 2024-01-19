@@ -55,4 +55,4 @@ python run_pipeline.py --mode load --save_load_path './cc_100k' --build_hf_ds
 # inference mode on new texts from an input dataset
 python run_pipeline.py --mode infer --save_load_path './cc_100k'  --n_samples <NB_INFERENCE_SAMPLES> --input_dataset <HF_DATA_FOR_INFERENCE>
 ```
-The `build_hf_ds` flag builds and pushes HF datasets  for the files and clusters that can be directky used in the FW visualization space (we push the clusters dataset to the hub by default).
+The `build_hf_ds` flag builds and pushes HF datasets, for the files and clusters, that can be directly used in the FW visualization space. In `infer` mode, we push the clusters dataset by default.
