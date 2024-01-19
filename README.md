@@ -48,8 +48,11 @@ cluster_labels, embeddings = cc.infer(some_texts, top_k=1)
 
 You can also run the pipeline using a script with:
 ```bash
-python run_pipeline.py --mode run --n_samples 100000 --save_load_path './cc_100k' --build_hf_ds
-# build_hf_ds builds and pushes HF datasets to be used in a visualization space
-# switch to --mode load to use an existing clustering instead of running a new one
+# run a new pipeline
+python run_pipeline.py --mode run  --save_load_path './cc_100k' --n_samples 100000 --build_hf_ds
+# load existing pipeline
 python run_pipeline.py --mode load --save_load_path './cc_100k' --build_hf_ds
+# inference mode on new texts from an input dataset
+python run_pipeline.py --mode infer --save_load_path './cc_100k'  --n_samples <NB_INFERENCE_SAMPLES> --input_dataset <HF_DATA_FOR_INFERENCE>
 ```
+The `build_hf_ds` flag builds and pushes HF datasets  for the files and clusters that can be directky used in the FW visualization space (we push the clusters dataset to the hub by default).

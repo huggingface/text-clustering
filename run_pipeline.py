@@ -2,6 +2,7 @@ import argparse
 import textwrap
 
 import pandas as pd
+import numpy as np
 from datasets import Dataset, load_dataset
 
 from src.text_clustering import ClusterClassifier
@@ -20,9 +21,13 @@ def get_args():
     parser.add_argument("--input_content", type=str, default="content")
     parser.add_argument(
         "--mode",
-        choices=["run", "load"],
+        choices=["run", "load", "infer"],
         default="run",
-        help="Run the pipeline from scratch or load existing model (default: run)",
+        help="Run the pipeline from scratch/load existing model to build hf datasets or to infer on new texts",
+    )
+    parser.add_argument(
+        "--inference_repo_name", type=str, default="infer_fw_on_ultrachat",
+        help="HF repo name for the clusters dataset in inference mode",
     )
     parser.add_argument(
         "--build_hf_ds",
@@ -33,25 +38,52 @@ def get_args():
     return parser.parse_args()
 
 
-def build_data_clusters(cc):
+def build_hf_data_clusters(cc, texts=None, labels=None):
+    """
+    Build an HF dataset containing information on each cluster.
+
+    Args:
+        cc: ClusterClassifier object.
+        texts: list of texts used for inference mode.
+        labels: list of cluster labels corresponding to the texts for inference mode.
+
+    If `texts` and `labels` are not provided, the function will use the data available in `cc` 
+    to construct the dataset. Otherwise it will run in inference mode on texts.
+    """
     cluster_data = []
-    for cluster_id, doc_ids in cc.label2docs.items():
+    for cluster_id in cc.label2docs.keys():
         if cluster_id == -1:
             continue
-        examples = [cc.texts[doc_id] for doc_id in doc_ids]
-        cluster_data.append(
-            {
-                "cluster_id": cluster_id,
-                "summary": cc.cluster_summaries[cluster_id],
-                "position": cc.cluster_centers[cluster_id],
-                "examples": examples,
-            }
-        )
+
+        # inference mode
+        if texts is not None and labels is not None:
+            labels_array = np.array(labels)
+            files_in_cluster = np.where(labels_array == cluster_id)[0]
+            examples = [texts[doc_id] for doc_id in files_in_cluster]
+        else:
+            doc_ids = cc.label2docs[cluster_id]
+            examples = [cc.texts[doc_id] for doc_id in doc_ids]
+
+        cluster_info = {
+            "cluster_id": cluster_id,
+            "summary": cc.cluster_summaries[cluster_id],
+            "examples": examples,
+        }
+
+        if not texts:
+            cluster_info["position"] = cc.cluster_centers[cluster_id]
+
+        cluster_data.append(cluster_info)
+
     data_clusters = Dataset.from_pandas(pd.DataFrame(cluster_data))
     return data_clusters
 
 
-def build_hf_files_ds(cc):
+def build_hf_data_files(cc):
+    """
+    Build an HF dataset containing information on each file and the cluster they belong to
+    """
+
     df = pd.DataFrame(
         data={
             "X": cc.projections[:, 0],
@@ -69,30 +101,50 @@ def main():
     cc = ClusterClassifier(embed_device=args.device)
 
     if args.mode == "run":
-        # Run the pipeline
-        texts = load_dataset(args.input_dataset, split="train").select(
+        # Run a new pipeline on texts
+        texts = load_dataset(args.input_dataset, split="train", token=True).select(
             range(args.n_samples)
         )[args.input_content]
+
         _, _, summaries = cc.fit(texts)
         print(f"10 example Summaries:\n{[e for e in summaries.values()][:10]}")
 
         cc.save(args.save_load_path)
         print(f"Saved clusters in {args.save_load_path}.")
+
+    elif args.mode == "infer":
+            cc.load(args.save_load_path)
+            # run inference mode on texts using an existing pipeline
+            cc.load(args.save_load_path)
+            print(
+                f"Running inference on {args.n_samples} samples of {args.input_dataset} using clusters in {args.save_load_path}"
+            )
+            texts = load_dataset(args.input_dataset, split="train", token=True).select(
+                range(args.n_samples)
+            )[args.input_content]
+            cluster_labels, _ = cc.infer(texts, top_k=1)
+            ds = build_hf_data_clusters(cc, texts, cluster_labels)
+            print("Pushing to hub...")
+            ds.push_to_hub(f"{args.username}/{args.inference_repo_name}", private=True)
+
     else:
-        # Load the pipeline
-        cc.load(args.save_load_path)
+        if not args.build_hf_ds:
+            print("Using mode=load but build_hf_ds is False, nothing to be done.")
 
     if args.build_hf_ds:
-        # Build and push HF datasets to the hub (used for the space viz)
         print("Building HF clustering datasets...")
-        ds = build_hf_files_ds(cc)
-        data_clusters = build_data_clusters(cc)
+        if args.mode == "load":
+            cc.load(args.save_load_path)
+        ds = build_hf_data_clusters(cc)
+        data_clusters = build_hf_data_files(cc)
         print(f"Files dataset {ds}\nClusters dataset {data_clusters}")
 
-        print("Pushing to the hub")
         repo_name = args.save_load_path.split("/")[-1]
+        print(f"Pushing to the hub at {repo_name}...")
         ds.push_to_hub(f"{args.username}/{repo_name}", private=True)
-        data_clusters.push_to_hub(f"{args.username}/{repo_name}_clusters", private=True)
+        data_clusters.push_to_hub(
+            f"{args.username}/{repo_name}_clusters", private=True
+        )
 
     print("Done 🎉!")
 

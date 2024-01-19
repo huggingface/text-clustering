@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import os
 import json
 from collections import Counter
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 
@@ -127,7 +128,7 @@ class ClusterClassifier:
 
         dist, neighbours = self.faiss_index.search(embeddings, top_k)
         inferred_labels = []
-        for i in range(embeddings.shape[0]):
+        for i in tqdm(range(embeddings.shape[0])):
             labels = [self.cluster_labels[doc] for doc in neighbours[i]]
             inferred_labels.append(Counter(labels).most_common(1)[0][0])
 
