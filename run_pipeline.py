@@ -75,8 +75,7 @@ def build_hf_data_clusters(cc, texts=None, labels=None):
 
         cluster_data.append(cluster_info)
 
-    data_clusters = Dataset.from_pandas(pd.DataFrame(cluster_data))
-    return data_clusters
+    return Dataset.from_pandas(pd.DataFrame(cluster_data))
 
 
 def build_hf_data_files(cc):
@@ -92,8 +91,7 @@ def build_hf_data_files(cc):
             "content_display": [textwrap.fill(txt[:1024], 64) for txt in cc.texts],
         }
     )
-    ds = Dataset.from_pandas(df)
-    return ds
+    return Dataset.from_pandas(df)
 
 
 def build_and_push(cc, args):
