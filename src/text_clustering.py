@@ -18,11 +18,19 @@ from tqdm import tqdm
 
 logging.basicConfig(level=logging.INFO)
 
-DEFAULT_INSTRUCTION = instruction = "Use three words total (comma separated)\
-to describe general topics in above texts. Under no circumstances use enumeration. \
-Example format: Tree, Cat, Fireman"
+DEFAULT_INSTRUCTION = (
+    instruction
+) = "The examples below are web samples from the same cluster, identify the topic they have in common, for example: Philosophy, Lifesyle, Linear Algebra, Biochemistry, Economics...\
+Additionally determine if the topics in the examples \
+are broadly suitable as college/school material, while being mindful to exclude any sensitive/inappropriate/irrelevant content, \
+including but not limited to sex, explicit violence, ads & scams, and other non-academic subjects. Consider a wide range of content including scientific, \
+educational, historical, cultural, and practical applications and give a rating of how educational these topics could be from 1 to 10, 1 being extremely un-educational \
+and inapproriate for an education setting and 10 being highly educational. The output format should be like this: Topic: the_topic, Educational value rating: score."
 
-DEFAULT_TEMPLATE = "<s>[INST]{examples}\n\n{instruction}[/INST]"
+
+DEFAULT_TEMPLATE = "<s>[INST]{instruction}\n\nExamples:\n{examples}\nRemember that the output format should be like this: Topic: the_topic, Educational value rating: score.[/INST]"
+EPS = 0.08
+MIN_SAMPLES = 50
 
 class ClusterClassifier:
 
@@ -35,13 +43,13 @@ class ClusterClassifier:
         embed_agg_strategy=None,
         umap_components=2,
         umap_metric="cosine",
-        dbscan_eps=0.15,
-        dbscan_min_samples=100,
+        dbscan_eps=EPS,
+        dbscan_min_samples=MIN_SAMPLES,
         dbscan_n_jobs=16,
         summary_create=True,
         summary_model="mistralai/Mixtral-8x7B-Instruct-v0.1",
         summary_n_examples=10,
-        summary_chunk_size=256,
+        summary_chunk_size=420,
         summary_model_token=True,
         summary_template=None,
         summary_instruction=None,
@@ -133,7 +141,7 @@ class ClusterClassifier:
             inferred_labels.append(Counter(labels).most_common(1)[0][0])
 
         return inferred_labels, embeddings
-    
+
     def embed(self, texts):
         embeddings = self.embed_model.encode(
             texts, 
@@ -150,6 +158,7 @@ class ClusterClassifier:
         return mapper.embedding_, mapper
     
     def cluster(self, embeddings):
+        print(f"Using DBSCAN (eps, nim_samples)=({self.dbscan_eps,}, {self.dbscan_min_samples})")
         clustering = DBSCAN(
             eps=self.dbscan_eps,
             min_samples=self.dbscan_min_samples,
@@ -174,13 +183,21 @@ class ClusterClassifier:
             
             request = self.summary_template.format(examples=examples, instruction=self.summary_instruction)
             response = client.text_generation(request)
+            if label == 0:
+                print(f"Request:\n{request}")
             cluster_summaries[label] =  self._postprocess_response(response) 
+        print(f"Number of clusters is {len(cluster_summaries)}")
         return cluster_summaries
-    
+
     def _postprocess_response(self, response):
-        summary = response.split("\n")[0].split(".")[0].split("(")[0]
-        summary = ",".join([txt for txt in summary.strip().split(',') if len(txt)>0])
-        return summary
+        first_line = response.split("\n")[0]
+        topic = first_line.split("Topic:")[1].split("(")[0].split(",")[0].strip()
+        try:
+            score = first_line.split("Educational value rating:")[1].strip().split(".")[0].strip()
+        except:
+            score = None
+        full_output = f"{topic}. Educational score: {score}"
+        return full_output
 
     def save(self, folder):
         if not os.path.exists(folder):

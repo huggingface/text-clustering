@@ -6,6 +6,7 @@ import numpy as np
 from datasets import Dataset, load_dataset
 
 from src.text_clustering import ClusterClassifier
+from src.plot_utils import plot_distributions
 
 
 def get_args():
@@ -36,6 +37,13 @@ def get_args():
     )
     parser.add_argument("--username", type=str, default="loubnabnl")
     return parser.parse_args()
+
+
+def extract_res(example):
+    summary = example["summary"]
+    category = summary.split(". Educational")[0].strip()
+    score = summary.split(" Educational score: ")[1].strip()
+    return {"category": category, "educational_score": score}
 
 
 def build_hf_data_clusters(cc, texts=None, labels=None):
@@ -98,6 +106,7 @@ def build_and_push(cc, args):
     """Build HF files & clusters datasts and push them to the hub"""
     print("Building HF datasets...")
     ds = build_hf_data_clusters(cc)
+    ds = ds.map(extract_res)
     data_clusters = build_hf_data_files(cc)
     print(f"Files dataset {ds}\nClusters dataset {data_clusters}")
 
@@ -113,9 +122,8 @@ def main():
 
     if args.mode == "run":
         # Run a new pipeline on texts
-        texts = load_dataset(args.input_dataset, split="train", token=True).select(
-            range(args.n_samples)
-        )[args.input_content]
+        ds = load_dataset(args.input_dataset, split="train", token=True)#.shuffle(seed=42)
+        texts = ds.select(range(args.n_samples))[args.input_content]
 
         _, _, summaries = cc.fit(texts)
         print(f"10 example Summaries:\n{[e for e in summaries.values()][:10]}")
@@ -125,6 +133,10 @@ def main():
 
         if args.build_hf_ds:
             build_and_push(cc, args)
+
+        ds_path = f"{args.username}/{args.save_load_path.split('/')[-1]}"
+        plot_distributions(ds_path, image_path=args.save_load_path)
+        print("📊 Saved plots for educational score and files distribution.")
 
     elif args.mode == "infer":
         # Run inference mode on texts using an existing pipeline
@@ -147,6 +159,9 @@ def main():
         if args.build_hf_ds:
             cc.load(args.save_load_path)
             build_and_push(cc, args)
+            ds_path = f"{args.username}/{args.save_load_path.split('/')[-1]}"
+            plot_distributions(ds_path, image_path=args.save_load_path)
+            print("📊 Saved plots for educational score and files distribution.")
         else:
             print("Using mode=load but build_hf_ds is False, nothing to be done.")
 
