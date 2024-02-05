@@ -57,4 +57,10 @@ python run_pipeline.py --mode infer --save_load_path './cc_100k'  --n_samples <N
 ```
 The `build_hf_ds` flag builds and pushes HF datasets, for the files and clusters, that can be directly used in the FW visualization space. In `infer` mode, we push the clusters dataset by default.
 
+## FW topic clustering experiments
+Run
+```bash
+# 100k samples eps 0.08 min_samples 40
+python run_pipeline.py --mode run  --save_load_path './fw_100k_more_clusters' --n_samples 100000 --build_hf_ds
+```
 The current pipeline clusters files and asks the LLM to find the topic of each cluster and give it an educational score. We plot the distribution of samples over topics and the distribution of the educational score and save the plots in the `save_load_path` folder. To filter low files you can discrad files from clusters with a low educational score. You might need to change the response prost-processing if you decide to change the prompt.
