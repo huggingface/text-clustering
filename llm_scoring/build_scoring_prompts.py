@@ -16,7 +16,7 @@ The total score should reflect the collective educational value of all examples 
 <EXAMPLES>
 End of the examples.
 
-Now riefly describe the educational value of the topics discussed as a whole, avoid using enumeration or describing each example alone.
+Now briefly describe the educational value of the topics discussed as a whole, avoid using enumeration or describing each example alone.
 Conclude with the score using the format: 'Educational value rating: <total points>.'"""
 
 li_prompt = """Below are extracts from some web samples. Please grade the topics discussed in these samples based on their educational relevance and appropriateness on a 5-point scale using the criteria below.
