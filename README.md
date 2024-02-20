@@ -79,6 +79,6 @@ python run_pipeline.py --mode run \
   --dbscan_min_samples 50
 ```
 
-This detects 213 clusters that you can visualize in `plots/topic_dist.png` along with the educational score which is very high for this AutoMathText dataset.
+This detects 213 clusters that you can visualize in this [plot](https://huggingface.co/datasets/HuggingFaceTB/miscellaneous/blob/main/AMT_plots/topics_distpng.png) along with the [educational scores](https://huggingface.co/datasets/HuggingFaceTB/miscellaneous/blob/main/AMT_plots/educational_score.png) which is very high for this AutoMathText dataset.
 
 When using general web datasets, you might want to filter out files with a lower quality by discrading clusters with a low educational score (e.g Explicit Adult Content). You can check this [demo](https://huggingface.co/spaces/HuggingFaceTB/inspect_clusters_free_topics) for an example.
