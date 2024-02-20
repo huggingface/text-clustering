@@ -56,3 +56,30 @@ python run_pipeline.py --mode load --save_load_path './cc_100k' --build_hf_ds
 python run_pipeline.py --mode infer --save_load_path './cc_100k'  --n_samples <NB_INFERENCE_SAMPLES> --input_dataset <HF_DATA_FOR_INFERENCE>
 ```
 The `build_hf_ds` flag builds and pushes HF datasets, for the files and clusters, that can be directly used in the FW visualization space. In `infer` mode, we push the clusters dataset by default.
+
+You can also change how the clusters are labeled (multiple topic (default) vs single topic with an educational score) using the flag `--topic_mode`.
+
+## Cosmopedia experiments: clustering of web samples and topic labeling
+Here you can find the commands we used during the selection of web samples for [Cosmopedia](https://huggingface.co/datasets/HuggingFaceTB/cosmopedia) prompts. We initially run the clustering on 100k samples to get 145 clusters, then we inferred the clusters of 15M more samples, half of them didn't belong to any cluster and weren't used in the prompts.
+
+You can use samples from a web dataset like [RefineWeb](https://huggingface.co/datasets/tiiuae/falcon-refinedweb). For illustration, we use  [AutoMathText](https://huggingface.co/datasets/math-ai/AutoMathText). 
+
+We will run the clustering using `topic_mode` single topic with educational scores. This pipline clusters files and prompts an LLM (by default [Mixtral-8x7B-Instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)) to find the topic of each cluster and give it an educational score. We plot the distribution of samples over topics and the distribution of the educational score and save the plots in the `save_load_path` folder. 
+
+```bash
+python run_pipeline.py --mode run \
+  --save_load_path './web_samples_100k' \
+  --input_dataset math-ai/AutoMathText \
+  --data_subset "web-0.70-to-1.00" \
+  --input_content text \
+  --n_samples 100000 \
+  --build_hf_ds \
+  --topic_mode single_topic \
+  --dbscan_eps 0.08 \
+  --dbscan_min_samples 50
+```
+
+
+This detects 213 clusters that you can visualize in this [plot](https://huggingface.co/datasets/HuggingFaceTB/miscellaneous/blob/main/AMT_plots/topics_distpng.png) along with the [educational scores](https://huggingface.co/datasets/HuggingFaceTB/miscellaneous/blob/main/AMT_plots/educational_score.png) which is very high for this AutoMathText dataset.
+
+When using general web datasets, you might want to filter out files with a lower quality by discrading clusters with a low educational score (e.g Explicit Adult Content). You can check this [demo](https://huggingface.co/spaces/HuggingFaceTB/inspect_clusters_free_topics) for an example.
