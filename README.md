@@ -76,3 +76,7 @@ python run_pipeline.py --mode infer --save_load_path './cc_100k'  --n_samples <N
 The `build_hf_ds` flag builds and pushes HF datasets, for the files and clusters, that can be directly used in the FW visualization space. In `infer` mode, we push the clusters dataset by default.
 
 You can also change how the clusters are labeled (multiple topic (default) vs single topic with an educational score) using the flag `--topic_mode`.
+
+## Examples
+
+Check the `examples` folder for an example on clustering and topic labeling applied to the [AutoMathText](https://huggingface.co/datasets/math-ai/AutoMathText/) dataset, utilizing [Cosmopedia](https://huggingface.co/datasets/HuggingFaceTB/cosmopedia)'s web labeling approach.
