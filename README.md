@@ -18,6 +18,11 @@ Install the following libraries to get started:
 ```bash
 pip install scikit-learn umap-learn sentence_transformers faiss-cpu plotly matplotlib datasets
 ```
+Clone this repository and navigate to folder:
+```bash
+git clone https://github.com/huggingface/text-clustering.git
+cd text-clustering
+```
 
 ## Usage
 
