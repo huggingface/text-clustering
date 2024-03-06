@@ -1,7 +1,20 @@
-# text-clustering
+# Text Clustering
+
+The Text Clustering repository contains tools to easily embed and cluster texts as well as label clusters semantically. This is repository is work in progress and serves as a minimal codebase that can be modified and adapted to other use-cases.
+
+<center><img src="https://cdn-uploads.huggingface.co/production/uploads/61c141342aac764ce1654e43/jMKGaE_UnEfH3j8iZYXVN.png"></center>
+<center>Clustering of texts in the <a href="https://huggingface.co/datasets/HuggingFaceTB/cosmopedia">Cosmopedia dataset</a>.</center>
+
+
+## How it works
+The pipeline consists of several distinct blocks that can be customized and the whole pipeline can run in a few minutes on a consumer laptop. Each block uses existing standard methods and work quite robustly.
+
+<center><img src="https://huggingface.co/datasets/lvwerra/admin/resolve/main/text-clustering.png"></center>
+<center>Text clustering pipeline.</center>
+
 
 ## Install 
-
+Install the following libraries to get started:
 ```bash
 pip install scikit-learn umap-learn sentence_transformers faiss-cpu plotly matplotlib datasets
 ```
