@@ -16,7 +16,7 @@ The pipeline consists of several distinct blocks that can be customized and the 
 ## Install 
 Install the following libraries to get started:
 ```bash
-pip install scikit-learn umap-learn sentence_transformers faiss-cpu plotly matplotlib datasets
+pip install scikit-learn umap-learn sentence_transformers faiss-cpu datamapplot datasets
 ```
 Clone this repository and navigate to the folder:
 ```bash
