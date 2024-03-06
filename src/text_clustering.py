@@ -6,10 +6,9 @@ import textwrap
 from collections import Counter, defaultdict
 
 import faiss
-import matplotlib.pyplot as plt
+import datamapplot
 import numpy as np
 import pandas as pd
-import plotly.express as px
 from huggingface_hub import InferenceClient
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import DBSCAN
@@ -290,93 +289,35 @@ class ClusterClassifier:
             y = np.mean([self.projections[doc, 1] for doc in self.label2docs[label]])
             self.cluster_centers[label] = (x, y)
 
-    def show(self, interactive=False):
-        df = pd.DataFrame(
-            data={
-                "X": self.projections[:, 0],
-                "Y": self.projections[:, 1],
-                "labels": self.cluster_labels,
-                "content_display": [
-                    textwrap.fill(txt[:1024], 64) for txt in self.texts
-                ],
-            }
+    def show(self, interactive=False, title=None, sub_title=None, font=None, enable_search=True):
+        label_vector = np.asarray(
+            [self.cluster_summaries[x] if x >= 0 else "Unlabelled" for x in self.cluster_labels], 
+            dtype=object
         )
-
-        if interactive:
-            self._show_plotly(df)
+        if font is None:
+            font_family = "Montserrat"
         else:
-            self._show_mpl(df)
-
-    def _show_mpl(self, df):
-        fig, ax = plt.subplots(figsize=(12, 8), dpi=300)
-
-        df["color"] = df["labels"].apply(lambda x: "C0" if x==-1 else f"C{(x%9)+1}")
-
-        df.plot(
-            kind="scatter",
-            x="X",
-            y="Y",
-            c="labels",
-            s=0.75,
-            alpha=0.8,
-            linewidth=0,
-            color=df["color"],
-            ax=ax,
-            colorbar=False,
-        )
-
-        for label in self.cluster_summaries.keys():
-            if label == -1:
-                continue
-            summary = self.cluster_summaries[label]
-            position = self.cluster_centers[label]
-            t= ax.text(
-                position[0],
-                position[1],
-                summary,
-                horizontalalignment='center',
-                verticalalignment='center',
-                fontsize=4,
+            font_family = font
+            
+        if interactive:
+            hover_text = [
+                text[:1021] + "..." if len(text) > 1024 else text
+                for text in self.texts
+            ]
+            datamapplot.create_interactive_plot(
+                self.projections, 
+                label_vector, 
+                hover_text=hover_text,
+                title=title,
+                sub_title=sub_title,
+                font_family=font_family,
+                enable_search=enable_search,
             )
-            t.set_bbox(dict(facecolor='white', alpha=0.9, linewidth=0, boxstyle='square,pad=0.1'))
-        ax.set_axis_off()
-
-    def _show_plotly(self, df):
-        fig = px.scatter(
-            df,
-            x="X",
-            y="Y",
-            color="labels",
-            hover_data={"content_display": True, "X": False, "Y": False},
-            width=1600,
-            height=800,
-            color_continuous_scale="HSV",
-        )
-
-        fig.update_traces(hovertemplate="%{customdata[0]}<extra></extra>")
-
-        fig.update_traces(
-            marker=dict(size=1, opacity=0.8),  # color="white"
-            selector=dict(mode="markers"),
-        )
-
-        fig.update_layout(
-            template="plotly_dark",
-        )
-
-        # show cluster summaries
-        for label in self.cluster_summaries.keys():
-            if label == -1:
-                continue
-            summary = self.cluster_summaries[label]
-            position = self.cluster_centers[label]
-
-            fig.add_annotation(
-                x=position[0],
-                y=position[1],
-                text=summary,
-                showarrow=False,
-                yshift=0,
+        else:
+            datamapplot.create_plot(
+                self.projections, 
+                label_vector,
+                title=title,
+                sub_title=sub_title,
+                fontfamily=font_family,
             )
-
-        fig.show()
