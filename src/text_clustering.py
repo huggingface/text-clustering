@@ -308,17 +308,19 @@ class ClusterClassifier:
             self._show_mpl(df)
 
     def _show_mpl(self, df):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(figsize=(12, 8), dpi=150)
+        fig, ax = plt.subplots(figsize=(12, 8), dpi=300)
+
+        df["color"] = df["labels"].apply(lambda x: "C0" if x==-1 else f"C{(x%9)+1}")
 
         df.plot(
             kind="scatter",
             x="X",
             y="Y",
             c="labels",
-            s=0.1,
+            s=0.75,
             alpha=0.8,
-            colormap="hsv",
+            linewidth=0,
+            color=df["color"],
             ax=ax,
             colorbar=False,
         )
@@ -328,14 +330,15 @@ class ClusterClassifier:
                 continue
             summary = self.cluster_summaries[label]
             position = self.cluster_centers[label]
-            ax.text(
+            t= ax.text(
                 position[0],
                 position[1],
                 summary,
-                horizontalalignment="center",
-                verticalalignment="center",
-                fontsize=6,
+                horizontalalignment='center',
+                verticalalignment='center',
+                fontsize=4,
             )
+            t.set_bbox(dict(facecolor='white', alpha=0.9, linewidth=0, boxstyle='square,pad=0.1'))
         ax.set_axis_off()
 
     def _show_plotly(self, df):

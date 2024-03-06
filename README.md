@@ -29,7 +29,7 @@ from datasets import load_dataset
 
 SAMPLE = 100_000
 
-texts = load_dataset("HuggingFaceFW/FW-12-12-2023-CC-2023-06", split="train").select(range(SAMPLE))["content"]
+texts = load_dataset("HuggingFaceTB/cosmopedia-100k", split="train").select(range(SAMPLE))["text"]
 
 cc = ClusterClassifier(embed_device="mps")
 
@@ -58,6 +58,27 @@ cc.show()
 # classify new texts with k-nearest neighbour search
 cluster_labels, embeddings = cc.infer(some_texts, top_k=1)
 ```
+
+If you want to reproduce the color scheme in the plot above you can add the following code before you run `cc.show()`:
+```python
+from cycler import cycler
+import matplotlib.pyplot as plt
+
+default_cycler = (cycler(color=[
+    "0F0A0A",
+    "FF6600",
+    "FFBE00",
+    "496767",
+    "87A19E",
+    "FF9200",
+    "0F3538",
+    "F8E08E",
+    "0F2021",
+    "FAFAF0"])
+    )
+plt.rc('axes', prop_cycle=default_cycler)
+```
+If you would like to customize the plotting further the easiest way is to customize or overwrite the `_show_mpl` and `_show_plotly` methods.
 
 You can also run the pipeline using a script with:
 ```bash
