@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 
 import faiss
 import datamapplot
+import fast_hdbscan
 import numpy as np
 import pandas as pd
 from huggingface_hub import InferenceClient
@@ -37,9 +38,7 @@ class ClusterClassifier:
         embed_agg_strategy=None,
         umap_components=2,
         umap_metric="cosine",
-        dbscan_eps=0.08,
-        dbscan_min_samples=50,
-        dbscan_n_jobs=16,
+        min_cluster_size=100,
         summary_create=True,
         summary_model="mistralai/Mixtral-8x7B-Instruct-v0.1",
         topic_mode="multiple_topics",
@@ -58,9 +57,7 @@ class ClusterClassifier:
         self.umap_components = umap_components
         self.umap_metric = umap_metric
 
-        self.dbscan_eps = dbscan_eps
-        self.dbscan_min_samples = dbscan_min_samples
-        self.dbscan_n_jobs = dbscan_n_jobs
+        self.min_cluster_size = min_cluster_size
 
         self.summary_create = summary_create
         self.summary_model = summary_model
@@ -161,12 +158,12 @@ class ClusterClassifier:
 
     def cluster(self, embeddings):
         print(
-            f"Using DBSCAN (eps, nim_samples)=({self.dbscan_eps,}, {self.dbscan_min_samples})"
+            f"Using HDBSCAN (min_cluster_size)=({self.min_cluster_size})"
         )
-        clustering = DBSCAN(
-            eps=self.dbscan_eps,
-            min_samples=self.dbscan_min_samples,
-            n_jobs=self.dbscan_n_jobs,
+        clustering = fast_hdbscan.HDBSCAN(
+            min_cluster_size=self.min_cluster_size,
+            min_samples=10,
+            cluster_selection_method="leaf",
         ).fit(embeddings)
 
         return clustering.labels_
@@ -194,8 +191,8 @@ class ClusterClassifier:
                 examples=examples, instruction=self.summary_instruction
             )
             response = client.text_generation(request)
-            if label == 0:
-                print(f"Request:\n{request}")
+            # if label == 0:
+            #     print(f"Request:\n{request}")
             cluster_summaries[label] = self._postprocess_response(response)
         print(f"Number of clusters is {len(cluster_summaries)}")
         return cluster_summaries
@@ -295,7 +292,7 @@ class ClusterClassifier:
             dtype=object
         )
         if font is None:
-            font_family = "Montserrat"
+            font_family = "Poppins"
         else:
             font_family = font
             
@@ -304,7 +301,7 @@ class ClusterClassifier:
                 text[:1021] + "..." if len(text) > 1024 else text
                 for text in self.texts
             ]
-            datamapplot.create_interactive_plot(
+            plot = datamapplot.create_interactive_plot(
                 self.projections, 
                 label_vector, 
                 hover_text=hover_text,
@@ -313,11 +310,13 @@ class ClusterClassifier:
                 font_family=font_family,
                 enable_search=enable_search,
             )
+            return plot
         else:
-            datamapplot.create_plot(
+            fig, ax = datamapplot.create_plot(
                 self.projections, 
                 label_vector,
                 title=title,
                 sub_title=sub_title,
                 fontfamily=font_family,
             )
+            return fig
