@@ -316,7 +316,6 @@ class ClusterClassifier:
             kind="scatter",
             x="X",
             y="Y",
-            c="labels",
             s=0.75,
             alpha=0.8,
             linewidth=0,
