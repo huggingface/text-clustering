@@ -313,6 +313,8 @@ class ClusterClassifier:
                 }
             )
             self._show_mpl(df, **kwargs)
+        else:
+            raise ValueError("plot_lib should be one of 'datamapplot', 'plotly' or 'matplotlib'")
 
 
     def _show_dmp(self, interactive=False, title=None, sub_title=None, font=None, enable_search=True, **kwargs):
