@@ -38,9 +38,7 @@ class ClusterClassifier:
         embed_agg_strategy=None,
         umap_components=2,
         umap_metric="cosine",
-        dbscan_eps=0.08,
-        dbscan_min_samples=50,
-        dbscan_n_jobs=16,
+        min_cluster_size=100,
         summary_create=True,
         summary_model="mistralai/Mixtral-8x7B-Instruct-v0.1",
         topic_mode="multiple_topics",
@@ -59,9 +57,7 @@ class ClusterClassifier:
         self.umap_components = umap_components
         self.umap_metric = umap_metric
 
-        self.dbscan_eps = dbscan_eps
-        self.dbscan_min_samples = dbscan_min_samples
-        self.dbscan_n_jobs = dbscan_n_jobs
+        self.min_cluster_size = min_cluster_size
 
         self.summary_create = summary_create
         self.summary_model = summary_model
@@ -162,12 +158,12 @@ class ClusterClassifier:
 
     def cluster(self, embeddings):
         print(
-            f"Using DBSCAN (eps, nim_samples)=({self.dbscan_eps,}, {self.dbscan_min_samples})"
+            f"Using HDBSCAN (min_cluster_size)=({self.min_cluster_size})"
         )
-        clustering = DBSCAN(
-            eps=self.dbscan_eps,
-            min_samples=self.dbscan_min_samples,
-            n_jobs=self.dbscan_n_jobs,
+        clustering = fast_hdbscan.HDBSCAN(
+            min_cluster_size=self.min_cluster_size,
+            min_samples=10,
+            cluster_selection_method="leaf",
         ).fit(embeddings)
 
         return clustering.labels_
@@ -195,8 +191,8 @@ class ClusterClassifier:
                 examples=examples, instruction=self.summary_instruction
             )
             response = client.text_generation(request)
-            if label == 0:
-                print(f"Request:\n{request}")
+            # if label == 0:
+            #     print(f"Request:\n{request}")
             cluster_summaries[label] = self._postprocess_response(response)
         print(f"Number of clusters is {len(cluster_summaries)}")
         return cluster_summaries
@@ -290,24 +286,77 @@ class ClusterClassifier:
             y = np.mean([self.projections[doc, 1] for doc in self.label2docs[label]])
             self.cluster_centers[label] = (x, y)
 
-    def show(self, interactive=False):
-        df = pd.DataFrame(
-            data={
-                "X": self.projections[:, 0],
-                "Y": self.projections[:, 1],
-                "labels": self.cluster_labels,
-                "content_display": [
-                    textwrap.fill(txt[:1024], 64) for txt in self.texts
-                ],
-            }
+    def show(self, plot_lib, **kwargs):
+        if plot_lib == "datamapplot":
+            self._show_dmp(**kwargs)
+        elif plot_lib == "plotly":
+            df = pd.DataFrame(
+                data={
+                    "X": self.projections[:, 0],
+                    "Y": self.projections[:, 1],
+                    "labels": self.cluster_labels,
+                    "content_display": [
+                        textwrap.fill(txt[:1024], 64) for txt in self.texts
+                    ],
+                }
+            )
+            self._show_plotly(df, **kwargs)
+        elif plot_lib in ("matplotlib", "mpl"):
+            df = pd.DataFrame(
+                data={
+                    "X": self.projections[:, 0],
+                    "Y": self.projections[:, 1],
+                    "labels": self.cluster_labels,
+                    "content_display": [
+                        textwrap.fill(txt[:1024], 64) for txt in self.texts
+                    ],
+                }
+            )
+            self._show_mpl(df, **kwargs)
+        else:
+            raise ValueError("plot_lib should be one of 'datamapplot', 'plotly' or 'matplotlib'")
+
+
+    def _show_dmp(self, interactive=False, title=None, sub_title=None, font=None, enable_search=True, **kwargs):
+        label_vector = np.asarray(
+            [self.cluster_summaries[x] if x >= 0 else "Unlabelled" for x in self.cluster_labels],
+            dtype=object
         )
 
-        if interactive:
-            self._show_plotly(df)
+        if font is None:
+            font_family = "Poppins"
         else:
-            self._show_mpl(df)
+            font_family = font
 
-    def _show_mpl(self, df):
+        if interactive:
+            hover_text = [
+                text[:1021] + "..." if len(text) > 1024 else text
+                for text in self.texts
+            ]
+            plot = datamapplot.create_interactive_plot(
+                self.projections,
+                label_vector,
+                hover_text=hover_text,
+                title=title,
+                sub_title=sub_title,
+                font_family=font_family,
+                enable_search=enable_search,
+                **kwargs,
+            )
+            return plot
+        else:
+            fig, ax = datamapplot.create_plot(
+                self.projections,
+                label_vector,
+                title=title,
+                sub_title=sub_title,
+                fontfamily=font_family,
+                **kwargs,
+            )
+            return fig
+
+
+   def _show_mpl(self, df, **kwargs):
         fig, ax = plt.subplots(figsize=(12, 8), dpi=300)
 
         df["color"] = df["labels"].apply(lambda x: "C0" if x==-1 else f"C{(x%9)+1}")
@@ -341,7 +390,7 @@ class ClusterClassifier:
             t.set_bbox(dict(facecolor='white', alpha=0.9, linewidth=0, boxstyle='square,pad=0.1'))
         ax.set_axis_off()
 
-    def _show_plotly(self, df):
+    def _show_plotly(self, df, **kwargs):
         fig = px.scatter(
             df,
             x="X",
